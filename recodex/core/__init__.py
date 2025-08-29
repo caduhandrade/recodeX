@@ -299,29 +299,40 @@ class TranscodeEngine:
         
         # Video codec
         codec = profile.video_codec.lower()
+        hardware_used = False
         
         if profile.hardware_accel and self.hardware_accel.get("nvenc"):
             # NVIDIA NVENC
             if codec in ["h264", "avc"]:
                 options["c:v"] = "h264_nvenc"
+                hardware_used = True
             elif codec in ["h265", "hevc"]:
                 options["c:v"] = "hevc_nvenc"
+                hardware_used = True
             else:
                 options["c:v"] = "libx264"  # Fallback
         elif profile.hardware_accel and self.hardware_accel.get("qsv"):
             # Intel Quick Sync
             if codec in ["h264", "avc"]:
                 options["c:v"] = "h264_qsv"
+                hardware_used = True
             elif codec in ["h265", "hevc"]:
                 options["c:v"] = "hevc_qsv"
+                hardware_used = True
             else:
                 options["c:v"] = "libx264"
         elif profile.hardware_accel and self.hardware_accel.get("vaapi"):
-            # VA-API
+            # VA-API - add initialization filters
             if codec in ["h264", "avc"]:
                 options["c:v"] = "h264_vaapi"
+                options["vaapi_device"] = "/dev/dri/renderD128"
+                options["vf"] = "format=nv12,hwupload"
+                hardware_used = True
             elif codec in ["h265", "hevc"]:
                 options["c:v"] = "hevc_vaapi"
+                options["vaapi_device"] = "/dev/dri/renderD128"
+                options["vf"] = "format=nv12,hwupload"
+                hardware_used = True
             else:
                 options["c:v"] = "libx264"
         else:
@@ -335,16 +346,35 @@ class TranscodeEngine:
             else:
                 options["c:v"] = "libx264"
         
+        # Log hardware acceleration usage
+        if hardware_used:
+            logger.info(f"Using hardware acceleration: {options['c:v']}")
+        
         # Quality settings
         if profile.video_crf is not None:
-            options["crf"] = str(profile.video_crf)
+            if hardware_used and any(hw in options["c:v"] for hw in ["_vaapi"]):
+                # VA-API uses different quality parameter
+                options["qp"] = str(profile.video_crf)
+            elif hardware_used and any(hw in options["c:v"] for hw in ["_nvenc"]):
+                # NVENC uses cq for constant quality
+                options["cq"] = str(profile.video_crf)
+            else:
+                options["crf"] = str(profile.video_crf)
         
         if profile.video_bitrate:
             options["b:v"] = profile.video_bitrate
         
-        # Preset
-        if profile.preset and not options["c:v"].endswith("_nvenc"):
+        # Preset (hardware encoders may not support all presets)
+        if profile.preset and not any(hw in options.get("c:v", "") for hw in ["_nvenc", "_qsv", "_vaapi", "_amf"]):
             options["preset"] = profile.preset
+        elif profile.preset and "_nvenc" in options.get("c:v", ""):
+            # NVENC presets are different
+            nvenc_presets = {
+                "ultrafast": "p1", "superfast": "p2", "veryfast": "p3",
+                "faster": "p4", "fast": "p5", "medium": "p6",
+                "slow": "p7", "slower": "p7", "veryslow": "p7"
+            }
+            options["preset"] = nvenc_presets.get(profile.preset, "p6")
         
         return options
     
