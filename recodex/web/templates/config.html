@@ -707,7 +707,7 @@
                         ${folders.map((folder, index) => `
                             <tr>
                                 <td><strong>${folder.path}</strong></td>
-                                <td>${folder.profile}</td>
+                                <td>${getProfileDisplayName(config, folder.profile)}</td>
                                 <td>${folder.output_path || 'Same as input'}</td>
                                 <td>${folder.recursive ? 'Yes' : 'No'}</td>
                                 <td>
@@ -730,8 +730,40 @@
             if (config && config.profiles) {
                 const profiles = Object.entries(config.profiles);
                 profileSelect.innerHTML = '<option value="">Select a profile...</option>' +
-                    profiles.map(([key, profile]) => `<option value="${profile.name}">${profile.name}</option>`).join('');
+                    profiles.map(([key, profile]) => `<option value="${key}">${profile.name}</option>`).join('');
             }
+        }
+        
+        function findProfileKeyByName(config, profileName) {
+            if (!config || !config.profiles) return null;
+            
+            for (const [key, profile] of Object.entries(config.profiles)) {
+                if (profile.name === profileName) {
+                    return key;
+                }
+            }
+            
+            // If not found by name, assume it's already a key
+            return profileName;
+        }
+        
+        function getProfileDisplayName(config, profileIdentifier) {
+            if (!config || !config.profiles) return profileIdentifier;
+            
+            // First try direct key lookup
+            if (config.profiles[profileIdentifier]) {
+                return config.profiles[profileIdentifier].name;
+            }
+            
+            // If not found by key, check if it's already a name
+            for (const [key, profile] of Object.entries(config.profiles)) {
+                if (profile.name === profileIdentifier) {
+                    return profile.name;
+                }
+            }
+            
+            // If nothing found, return the original identifier
+            return profileIdentifier;
         }
         
         // Profile management
@@ -795,14 +827,16 @@
                 
                 // Populate form
                 document.getElementById('folder-path').value = folder.path;
-                document.getElementById('folder-profile').value = folder.profile;
                 document.getElementById('output-path').value = folder.output_path || '';
                 document.getElementById('extensions').value = folder.extensions.join(',');
                 document.getElementById('recursive').checked = folder.recursive;
                 document.getElementById('delete-original').checked = folder.delete_original;
                 
                 await populateProfileDropdown();
-                document.getElementById('folder-profile').value = folder.profile;
+                
+                // Find the correct profile key (handles both profile names and keys)
+                const profileKey = findProfileKeyByName(config, folder.profile);
+                document.getElementById('folder-profile').value = profileKey;
                 
                 showModal('watch-folder-modal');
             }

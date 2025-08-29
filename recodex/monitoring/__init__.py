@@ -36,6 +36,27 @@ class MediaFileHandler(FileSystemEventHandler):
             file_path = Path(event.dest_path)
             asyncio.create_task(self._process_new_file(file_path))
     
+    def _find_profile(self, profile_identifier: str) -> Optional[TranscodeProfile]:
+        """Find profile by key or name.
+        
+        Args:
+            profile_identifier: Profile key (e.g., 'small_file') or name (e.g., 'Small File')
+            
+        Returns:
+            TranscodeProfile if found, None otherwise
+        """
+        # First try direct key lookup
+        profile = self.profiles.get(profile_identifier)
+        if profile:
+            return profile
+            
+        # If not found, try to find by profile name
+        for profile_key, profile_obj in self.profiles.items():
+            if profile_obj.name == profile_identifier:
+                return profile_obj
+                
+        return None
+    
     async def _process_new_file(self, file_path: Path):
         """Process a newly detected file."""
         try:
@@ -60,7 +81,7 @@ class MediaFileHandler(FileSystemEventHandler):
             self.processing_files.add(file_path)
             
             # Get profile
-            profile = self.profiles.get(self.watch_folder.profile)
+            profile = self._find_profile(self.watch_folder.profile)
             if not profile:
                 logger.error(f"Profile '{self.watch_folder.profile}' not found for {file_path}")
                 return
