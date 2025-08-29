@@ -233,6 +233,36 @@ class Statistics:
             "running": running_count,
             "failed": failed_count
         }
+    
+    async def get_pending_jobs(self, limit: int = 50) -> List[TranscodeRecord]:
+        """Get pending jobs."""
+        result = await self.session.execute(
+            select(TranscodeRecord)
+            .where(TranscodeRecord.status == "pending")
+            .order_by(TranscodeRecord.created_at.asc())
+            .limit(limit)
+        )
+        return result.scalars().all()
+    
+    async def get_completed_jobs(self, limit: int = 50) -> List[TranscodeRecord]:
+        """Get completed jobs."""
+        result = await self.session.execute(
+            select(TranscodeRecord)
+            .where(TranscodeRecord.status == "completed")
+            .order_by(TranscodeRecord.completed_at.desc())
+            .limit(limit)
+        )
+        return result.scalars().all()
+    
+    async def get_failed_jobs(self, limit: int = 50) -> List[TranscodeRecord]:
+        """Get failed jobs."""
+        result = await self.session.execute(
+            select(TranscodeRecord)
+            .where(TranscodeRecord.status == "failed")
+            .order_by(TranscodeRecord.created_at.desc())
+            .limit(limit)
+        )
+        return result.scalars().all()
 
 
 class DatabaseManager:
@@ -294,3 +324,56 @@ class DatabaseManager:
         """Get statistics helper."""
         session = await self.get_session()
         return Statistics(session)
+    
+    async def get_pending_jobs(self, limit: int = 50) -> List[TranscodeRecord]:
+        """Get pending jobs."""
+        stats = await self.get_statistics()
+        return await stats.get_pending_jobs(limit)
+    
+    async def get_completed_jobs(self, limit: int = 50) -> List[TranscodeRecord]:
+        """Get completed jobs."""
+        stats = await self.get_statistics()
+        return await stats.get_completed_jobs(limit)
+    
+    async def get_failed_jobs(self, limit: int = 50) -> List[TranscodeRecord]:
+        """Get failed jobs."""
+        stats = await self.get_statistics()
+        return await stats.get_failed_jobs(limit)
+    
+    async def reprocess_job(self, job_id: int) -> dict:
+        """Mark a completed/failed job for reprocessing."""
+        async with await self.get_session() as session:
+            # Get the original job record
+            result = await session.execute(
+                select(TranscodeRecord).where(TranscodeRecord.id == job_id)
+            )
+            record = result.scalar_one_or_none()
+            
+            if not record:
+                raise ValueError(f"Job {job_id} not found")
+            
+            if record.status not in ["completed", "failed"]:
+                raise ValueError(f"Job {job_id} cannot be reprocessed (status: {record.status})")
+            
+            # Create a new record for reprocessing
+            new_record = TranscodeRecord(
+                input_path=record.input_path,
+                output_path=record.output_path,
+                profile_name=record.profile_name,
+                status="pending",
+                original_size=record.original_size,
+                original_codec=record.original_codec,
+                duration=record.duration
+            )
+            
+            session.add(new_record)
+            await session.commit()
+            await session.refresh(new_record)
+            
+            return {
+                "id": new_record.id,
+                "input_path": new_record.input_path,
+                "output_path": new_record.output_path,
+                "profile_name": new_record.profile_name,
+                "status": new_record.status
+            }

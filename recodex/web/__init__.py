@@ -294,6 +294,98 @@ class WebDashboard:
             except Exception as e:
                 logger.error(f"Error getting active jobs: {e}")
                 return []
+        
+        @self.app.get("/api/jobs/pending")
+        async def get_pending_jobs():
+            """Get pending jobs from database."""
+            try:
+                if self.service.db_manager:
+                    jobs = await self.service.db_manager.get_pending_jobs()
+                    return [
+                        {
+                            "id": job.id,
+                            "input_path": job.input_path,
+                            "output_path": job.output_path,
+                            "profile_name": job.profile_name,
+                            "created_at": job.created_at.isoformat() if job.created_at else None,
+                            "status": job.status
+                        }
+                        for job in jobs
+                    ]
+                return []
+            except Exception as e:
+                logger.error(f"Error getting pending jobs: {e}")
+                return []
+        
+        @self.app.get("/api/jobs/completed")
+        async def get_completed_jobs():
+            """Get completed jobs from database."""
+            try:
+                if self.service.db_manager:
+                    jobs = await self.service.db_manager.get_completed_jobs()
+                    return [
+                        {
+                            "id": job.id,
+                            "input_path": job.input_path,
+                            "output_path": job.output_path,
+                            "profile_name": job.profile_name,
+                            "created_at": job.created_at.isoformat() if job.created_at else None,
+                            "completed_at": job.completed_at.isoformat() if job.completed_at else None,
+                            "status": job.status,
+                            "processing_time": job.processing_time,
+                            "original_size": job.original_size,
+                            "final_size": job.final_size,
+                            "space_saved": job.space_saved,
+                            "compression_ratio": job.compression_ratio
+                        }
+                        for job in jobs
+                    ]
+                return []
+            except Exception as e:
+                logger.error(f"Error getting completed jobs: {e}")
+                return []
+        
+        @self.app.get("/api/jobs/failed")
+        async def get_failed_jobs():
+            """Get failed jobs from database."""
+            try:
+                if self.service.db_manager:
+                    jobs = await self.service.db_manager.get_failed_jobs()
+                    return [
+                        {
+                            "id": job.id,
+                            "input_path": job.input_path,
+                            "output_path": job.output_path,
+                            "profile_name": job.profile_name,
+                            "created_at": job.created_at.isoformat() if job.created_at else None,
+                            "status": job.status,
+                            "error_message": job.error_message
+                        }
+                        for job in jobs
+                    ]
+                return []
+            except Exception as e:
+                logger.error(f"Error getting failed jobs: {e}")
+                return []
+        
+        @self.app.post("/api/jobs/{job_id}/reprocess")
+        async def reprocess_job(job_id: int):
+            """Reprocess a completed or failed job."""
+            try:
+                if not self.service.db_manager:
+                    raise HTTPException(status_code=500, detail="Database not available")
+                
+                job_info = await self.service.db_manager.reprocess_job(job_id)
+                return {
+                    "status": "success", 
+                    "message": f"Job {job_id} has been queued for reprocessing",
+                    "new_job": job_info
+                }
+            except ValueError as e:
+                raise HTTPException(status_code=400, detail=str(e))
+            except Exception as e:
+                logger.error(f"Error reprocessing job {job_id}: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
 
 
 def create_templates_directory():
