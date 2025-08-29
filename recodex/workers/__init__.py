@@ -325,14 +325,31 @@ class RecodeXService:
     
     def get_status(self) -> dict:
         """Get comprehensive service status."""
+        # Count active jobs
+        active_job_count = 0
+        worker_status = None
+        
+        if self.worker_manager:
+            active_jobs = self.worker_manager.get_active_jobs()
+            active_job_count = len(active_jobs)
+            worker_status = self.worker_manager.get_status()
+        
+        # Check if any FFmpeg processes are running
+        ffmpeg_running = active_job_count > 0
+        
+        # File monitor status
+        file_monitor_status = {
+            "running": self.file_monitor.running if self.file_monitor else False,
+            "watch_folders": len(self.config.watch_folders),
+            "queue_size": self.file_monitor.get_queue_size() if self.file_monitor else 0
+        }
+        
         status = {
             "service_running": self.running,
-            "file_monitor": {
-                "running": self.file_monitor.running if self.file_monitor else False,
-                "watch_folders": len(self.config.watch_folders),
-                "queue_size": self.file_monitor.get_queue_size() if self.file_monitor else 0
-            },
-            "workers": self.worker_manager.get_status() if self.worker_manager else None
+            "ffmpeg_running": ffmpeg_running,
+            "active_jobs_count": active_job_count,
+            "file_monitor": file_monitor_status,
+            "workers": worker_status
         }
         
         return status

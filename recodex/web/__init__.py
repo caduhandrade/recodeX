@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import logging
 from pathlib import Path
 from typing import Dict, Optional, TYPE_CHECKING, List
 
@@ -13,6 +14,8 @@ from pydantic import BaseModel
 import uvicorn
 
 from ..config import RecodeXConfig, TranscodeProfile, WatchFolder
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from ..workers import RecodeXService
@@ -81,12 +84,36 @@ class WebDashboard:
         @self.app.get("/api/status")
         async def get_status():
             """Get service status."""
-            return self.service.get_status()
+            try:
+                return self.service.get_status()
+            except Exception as e:
+                logger.error(f"Error getting status: {e}")
+                return {
+                    "service_running": False,
+                    "ffmpeg_running": False,
+                    "active_jobs_count": 0,
+                    "file_monitor": {
+                        "running": False,
+                        "watch_folders": 0,
+                        "queue_size": 0
+                    },
+                    "workers": None,
+                    "error": str(e)
+                }
         
         @self.app.get("/api/statistics")
         async def get_statistics():
             """Get processing statistics."""
-            return await self.service.get_statistics()
+            try:
+                return await self.service.get_statistics()
+            except Exception as e:
+                logger.error(f"Error getting statistics: {e}")
+                return {
+                    "total_processed": 0,
+                    "total_space_saved": 0,
+                    "total_original_size": 0,
+                    "error": str(e)
+                }
         
         @self.app.get("/api/config")
         async def get_config():
@@ -260,9 +287,13 @@ class WebDashboard:
         @self.app.get("/api/jobs/active")
         async def get_active_jobs():
             """Get currently active jobs."""
-            if self.service.worker_manager:
-                return self.service.worker_manager.get_active_jobs()
-            return []
+            try:
+                if self.service.worker_manager:
+                    return self.service.worker_manager.get_active_jobs()
+                return []
+            except Exception as e:
+                logger.error(f"Error getting active jobs: {e}")
+                return []
 
 
 def create_templates_directory():
