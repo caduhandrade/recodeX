@@ -1,0 +1,49 @@
+watch_folders:
+  - path: C:/Users/carlo/Vídeos
+    profile: high_quality
+    recursive: true
+    extensions: [".mp4", ".mkv", ".avi"]
+    output_path: C:/Users/carlo/Vídeos/convertidos
+    delete_original: false
+
+profiles:
+  high_quality:
+    name: High Quality
+    video_codec: h265
+    video_crf: 20
+    audio_codec: copy
+    container: mkv
+    preset: slow
+  balanced:
+    name: Balanced
+    video_codec: h264
+    video_crf: 23
+    audio_codec: aac
+    audio_bitrate: "128k"
+    container: mp4
+    preset: medium
+  small_file:
+    name: Small File
+    video_codec: h265
+    video_crf: 28
+    audio_codec: aac
+    audio_bitrate: "96k"
+    container: mp4
+    preset: slower
+
+database:
+  url: sqlite:///recodex.db
+  echo: false
+
+web:
+  host: 127.0.0.1
+  port: 8000
+  reload: false
+
+worker:
+  max_workers: 2
+  temp_dir: null
+  dry_run: false
+
+log_level: INFO
+log_file: null

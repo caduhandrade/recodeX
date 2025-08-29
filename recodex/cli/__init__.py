@@ -229,7 +229,13 @@ def config_edit(ctx):
     # Try to open with default editor
     try:
         import os
-        editor = os.environ.get('EDITOR', 'nano')
+        import sys
+        if sys.platform.startswith('linux'):
+            editor = os.environ.get('EDITOR', 'nano')
+        elif sys.platform == 'darwin':
+            editor = os.environ.get('EDITOR', 'open')
+        else:
+            editor = os.environ.get('EDITOR', 'notepad')
         os.system(f'{editor} {config_path}')
         console.print("[green]Configuration edited.[/green]")
     except Exception as e:

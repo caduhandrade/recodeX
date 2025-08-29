@@ -13,7 +13,7 @@ watch_folders:
     extensions: [".mp4", ".mkv", ".avi", ".mov"]
     output_path: /media/output/movies
     delete_original: false
-  
+
   - path: /media/input/tv_shows
     profile: balanced
     recursive: true
@@ -31,7 +31,7 @@ profiles:
     container: mkv
     hardware_accel: true
     preset: slow
-  
+
   balanced:
     name: "Balanced"
     video_codec: h264
@@ -41,7 +41,7 @@ profiles:
     container: mp4
     hardware_accel: true
     preset: medium
-  
+
   small_file:
     name: "Small File"
     video_codec: h265
@@ -111,13 +111,14 @@ recodex stats
 RecodeX automatically detects and uses available hardware acceleration:
 
 - **NVIDIA GPUs**: NVENC encoding for H.264/H.265
-- **Intel CPUs**: Quick Sync Video (QSV) 
+- **Intel CPUs**: Quick Sync Video (QSV)
 - **AMD GPUs**: AMF (Advanced Media Framework)
 - **Linux**: VA-API for various hardware
 
 ## Space Savings Example:
 
 Typical space savings with different profiles:
+
 - **High Quality (H.265)**: 30-50% smaller than original H.264
 - **Balanced (H.264)**: 10-30% smaller with optimized settings
 - **Small File (H.265)**: 50-70% smaller for streaming/storage

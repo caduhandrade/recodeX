@@ -21,7 +21,18 @@ pip install -e .
 
 ## Quick Start
 
-1. **Configuration**: Edit the configuration file to set your watch folders and encoding preferences
+1. **Configuration**: Edite o arquivo de configuração criado automaticamente em `C:/Users/<seu-usuario>/\.config/recodex/config.yaml` (Windows) ou `~/.config/recodex/config.yaml` (Linux/Mac). Altere o campo `path` em `watch_folders` para o diretório que deseja monitorar. Exemplo:
+
+```yaml
+watch_folders:
+	- path: C:/Users/seu-usuario/Vídeos
+		profile: high_quality
+		recursive: true
+		extensions: [".mp4", ".mkv", ".avi"]
+		output_path: C:/Users/seu-usuario/Vídeos/convertidos
+		delete_original: false
+```
+
 2. **Start Service**: `recodex start`
 3. **Web Dashboard**: Open http://localhost:8000 to view statistics
 4. **CLI Management**: Use `recodex --help` for available commands
