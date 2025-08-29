@@ -116,6 +116,46 @@ def start(ctx):
 
 @cli.command()
 @click.pass_context
+def web(ctx):
+    """Start the web interface only for configuration."""
+    config: RecodeXConfig = ctx.obj['config']
+    config_path = ctx.obj['config_path']
+    
+    console.print("[bold green]Starting RecodeX Web Interface...[/bold green]")
+    
+    # Create service but without watch folder validation
+    service = RecodeXService(config, config_path)
+    
+    async def run_web_only():
+        try:
+            # Start only the web interface
+            await service.start_web_only()
+            
+            console.print("[bold green]Web interface started successfully![/bold green]")
+            console.print(f"Configuration interface: http://{config.web.host}:{config.web.port}/config")
+            console.print("Press Ctrl+C to stop the web interface.")
+            
+            # Keep running until interrupted
+            while True:
+                await asyncio.sleep(1)
+                
+        except KeyboardInterrupt:
+            console.print("\n[yellow]Shutting down...[/yellow]")
+        except Exception as e:
+            console.print(f"[bold red]Error:[/bold red] {e}")
+        finally:
+            await service.stop()
+            console.print("[green]Web interface stopped.[/green]")
+    
+    # Run the web interface
+    try:
+        asyncio.run(run_web_only())
+    except KeyboardInterrupt:
+        pass
+
+
+@cli.command()
+@click.pass_context
 def status(ctx):
     """Show service status."""
     config: RecodeXConfig = ctx.obj['config']

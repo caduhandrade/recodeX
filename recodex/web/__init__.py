@@ -70,6 +70,14 @@ class WebDashboard:
                 "title": "RecodeX Dashboard"
             })
         
+        @self.app.get("/config", response_class=HTMLResponse)
+        async def config_page(request: Request):
+            """Configuration page."""
+            return self.templates.TemplateResponse("config.html", {
+                "request": request,
+                "title": "RecodeX Configuration"
+            })
+        
         @self.app.get("/api/status")
         async def get_status():
             """Get service status."""
@@ -203,26 +211,22 @@ class WebDashboard:
             except Exception as e:
                 raise HTTPException(status_code=400, detail=str(e))
         
-        @self.app.delete("/api/config/watch-folders")
-        async def delete_watch_folder(path: str):
-            """Delete a watch folder."""
+        @self.app.delete("/api/config/watch-folders/{folder_index}")
+        async def delete_watch_folder(folder_index: int):
+            """Delete a watch folder by index."""
             try:
-                # Find and remove the watch folder
-                initial_count = len(self.config.watch_folders)
-                self.config.watch_folders = [
-                    folder for folder in self.config.watch_folders 
-                    if str(folder.path) != path
-                ]
-                
-                if len(self.config.watch_folders) == initial_count:
+                if folder_index < 0 or folder_index >= len(self.config.watch_folders):
                     raise HTTPException(status_code=404, detail="Watch folder not found")
+                
+                folder_path = str(self.config.watch_folders[folder_index].path)
+                del self.config.watch_folders[folder_index]
                 
                 # Save configuration
                 config_path = self.service.config_path
                 if config_path:
                     self.config.to_yaml(config_path)
                 
-                return {"status": "success", "message": f"Watch folder '{path}' deleted successfully"}
+                return {"status": "success", "message": f"Watch folder '{folder_path}' deleted successfully"}
                 
             except Exception as e:
                 raise HTTPException(status_code=400, detail=str(e))

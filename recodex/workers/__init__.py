@@ -278,6 +278,22 @@ class RecodeXService:
         self.running = True
         logger.info("RecodeX service started")
     
+    async def start_web_only(self):
+        """Start only the web interface for configuration purposes."""
+        if self.running:
+            return
+        
+        logger.info("Starting RecodeX web interface only...")
+        
+        # Initialize database for statistics
+        await self.db_manager.initialize()
+        
+        # Start web server
+        self.web_server_task = asyncio.create_task(run_web_server(self.config, self))
+        
+        self.running = True
+        logger.info("RecodeX web interface started")
+    
     async def stop(self):
         """Stop the RecodeX service."""
         if not self.running:
