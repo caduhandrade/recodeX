@@ -95,6 +95,68 @@ async def test_event_loop_reference():
     assert hasattr(handler, 'event_loop')
 
 
+@pytest.mark.asyncio
+async def test_future_result_handling():
+    """Test that MediaFileHandler properly handles Future results from run_coroutine_threadsafe."""
+    # Create temporary directory
+    with tempfile.TemporaryDirectory() as temp_dir:
+        watch_path = Path(temp_dir)
+        
+        # Create watch folder configuration
+        watch_folder = WatchFolder(
+            path=watch_path,
+            profile="test_profile",
+            extensions=[".mp4", ".mkv"],
+            recursive=False
+        )
+        
+        # Create test profile
+        profile = TranscodeProfile(
+            name="Test Profile",
+            video_codec="h264",
+            audio_codec="aac",
+            container="mp4"
+        )
+        profiles = {"test_profile": profile}
+        
+        # Create job queue and event loop
+        job_queue = asyncio.Queue()
+        event_loop = asyncio.get_running_loop()
+        
+        # Create handler
+        handler = MediaFileHandler(watch_folder, job_queue, profiles, event_loop)
+        
+        # Mock the _process_new_file method to simulate an exception
+        async def mock_process_file_with_error(file_path):
+            """Mock coroutine that raises an exception."""
+            raise ValueError("Test exception")
+        
+        handler._process_new_file = mock_process_file_with_error
+        
+        # Track if the future callback was called
+        callback_called = asyncio.Event()
+        original_callback = handler._handle_future_result
+        
+        def tracking_callback(future):
+            original_callback(future)
+            callback_called.set()
+        
+        handler._handle_future_result = tracking_callback
+        
+        # Create a mock event
+        mock_event = Mock()
+        mock_event.is_directory = False
+        mock_event.src_path = str(watch_path / "test.mp4")
+        
+        # Test that on_created properly handles the future even with exceptions
+        handler.on_created(mock_event)
+        
+        # Wait for the callback to be called
+        await asyncio.wait_for(callback_called.wait(), timeout=2.0)
+        
+        assert callback_called.is_set(), "Future callback should have been called"
+
+
 def test_handler_initialization():
     """Test that MediaFileHandler requires event_loop parameter."""
     watch_folder = WatchFolder(

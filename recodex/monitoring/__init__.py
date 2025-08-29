@@ -30,14 +30,26 @@ class MediaFileHandler(FileSystemEventHandler):
         if not event.is_directory:
             file_path = Path(event.src_path)
             # Schedule coroutine on the main event loop from watchdog thread
-            asyncio.run_coroutine_threadsafe(self._process_new_file(file_path), self.event_loop)
+            future = asyncio.run_coroutine_threadsafe(self._process_new_file(file_path), self.event_loop)
+            # Add callback to handle any exceptions
+            future.add_done_callback(self._handle_future_result)
     
     def on_moved(self, event):
         """Handle file move events."""
         if not event.is_directory:
             file_path = Path(event.dest_path)
             # Schedule coroutine on the main event loop from watchdog thread
-            asyncio.run_coroutine_threadsafe(self._process_new_file(file_path), self.event_loop)
+            future = asyncio.run_coroutine_threadsafe(self._process_new_file(file_path), self.event_loop)
+            # Add callback to handle any exceptions
+            future.add_done_callback(self._handle_future_result)
+    
+    def _handle_future_result(self, future):
+        """Handle the result of a scheduled coroutine."""
+        try:
+            # Get the result to ensure any exceptions are raised
+            future.result()
+        except Exception as e:
+            logger.error(f"Error in scheduled file processing task: {e}")
     
     def _find_profile(self, profile_identifier: str) -> Optional[TranscodeProfile]:
         """Find profile by key or name.

@@ -126,6 +126,57 @@
             color: #6c757d;
             font-style: italic;
         }
+        
+        /* Job Management Tabs */
+        .job-management-section {
+            margin-top: 30px;
+        }
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid #e9ecef;
+            margin-bottom: 20px;
+        }
+        .tab {
+            background: none;
+            border: none;
+            padding: 12px 24px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            font-size: 16px;
+            color: #6c757d;
+            transition: all 0.3s ease;
+        }
+        .tab:hover {
+            color: #495057;
+            background-color: #f8f9fa;
+        }
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+        .tab-panel {
+            display: none;
+        }
+        .tab-panel.active {
+            display: block;
+        }
+        .reprocess-btn {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        .reprocess-btn:hover {
+            background-color: #0056b3;
+        }
+        .reprocess-btn:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body>
@@ -162,6 +213,47 @@
             <h3>Active Jobs</h3>
             <div id="active-jobs">
                 <span class="loading">Loading...</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Job Management Section -->
+    <div class="job-management-section">
+        <div class="tabs">
+            <button class="tab" onclick="showJobTab('pending')">Pending Jobs</button>
+            <button class="tab" onclick="showJobTab('completed')">Completed Jobs</button>
+            <button class="tab" onclick="showJobTab('failed')">Failed Jobs</button>
+        </div>
+        
+        <div class="tab-content">
+            <!-- Pending Jobs Tab -->
+            <div id="pending-jobs-tab" class="tab-panel">
+                <div class="card">
+                    <h3>Pending Jobs</h3>
+                    <div id="pending-jobs">
+                        <span class="loading">Loading...</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Completed Jobs Tab -->
+            <div id="completed-jobs-tab" class="tab-panel">
+                <div class="card">
+                    <h3>Completed Jobs</h3>
+                    <div id="completed-jobs">
+                        <span class="loading">Loading...</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Failed Jobs Tab -->
+            <div id="failed-jobs-tab" class="tab-panel">
+                <div class="card">
+                    <h3>Failed Jobs</h3>
+                    <div id="failed-jobs">
+                        <span class="loading">Loading...</span>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -325,6 +417,169 @@
             jobsDiv.innerHTML = jobsHTML;
         }
         
+        // Job Management Functions
+        function showJobTab(tabName) {
+            // Hide all tabs
+            const tabs = document.querySelectorAll('.tab');
+            const panels = document.querySelectorAll('.tab-panel');
+            
+            tabs.forEach(tab => tab.classList.remove('active'));
+            panels.forEach(panel => panel.classList.remove('active'));
+            
+            // Show selected tab
+            document.querySelector(`[onclick="showJobTab('${tabName}')"]`).classList.add('active');
+            document.getElementById(`${tabName}-jobs-tab`).classList.add('active');
+            
+            // Load jobs for the selected tab
+            if (tabName === 'pending') {
+                loadPendingJobs();
+            } else if (tabName === 'completed') {
+                loadCompletedJobs();
+            } else if (tabName === 'failed') {
+                loadFailedJobs();
+            }
+        }
+        
+        async function loadPendingJobs() {
+            const jobs = await fetchAPI('/api/jobs/pending');
+            const jobsDiv = document.getElementById('pending-jobs');
+            
+            if (!jobs) {
+                jobsDiv.innerHTML = '<span class="error-message">Failed to load pending jobs</span>';
+                return;
+            }
+            
+            if (jobs.length === 0) {
+                jobsDiv.innerHTML = '<p>No pending jobs</p>';
+                return;
+            }
+            
+            let jobsHTML = '';
+            jobs.forEach(job => {
+                const fileName = job.input_path.split('/').pop();
+                jobsHTML += `
+                    <div class="job-item">
+                        <h4>${fileName}</h4>
+                        <div><strong>Profile:</strong> ${job.profile_name}</div>
+                        <div><strong>Status:</strong> ${job.status}</div>
+                        <div><strong>Created:</strong> ${new Date(job.created_at).toLocaleString()}</div>
+                        <div style="margin-top: 5px; font-size: 0.9em; color: #666;">
+                            Input: ${job.input_path}<br>
+                            Output: ${job.output_path}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            jobsDiv.innerHTML = jobsHTML;
+        }
+        
+        async function loadCompletedJobs() {
+            const jobs = await fetchAPI('/api/jobs/completed');
+            const jobsDiv = document.getElementById('completed-jobs');
+            
+            if (!jobs) {
+                jobsDiv.innerHTML = '<span class="error-message">Failed to load completed jobs</span>';
+                return;
+            }
+            
+            if (jobs.length === 0) {
+                jobsDiv.innerHTML = '<p>No completed jobs</p>';
+                return;
+            }
+            
+            let jobsHTML = '';
+            jobs.forEach(job => {
+                const fileName = job.input_path.split('/').pop();
+                const spaceSaved = job.space_saved ? `${(job.space_saved / 1024 / 1024).toFixed(1)} MB` : 'N/A';
+                const compressionRatio = job.compression_ratio ? `${job.compression_ratio.toFixed(2)}x` : 'N/A';
+                const processingTime = job.processing_time ? `${job.processing_time.toFixed(1)}s` : 'N/A';
+                
+                jobsHTML += `
+                    <div class="job-item">
+                        <h4>${fileName}</h4>
+                        <div><strong>Profile:</strong> ${job.profile_name}</div>
+                        <div><strong>Processing Time:</strong> ${processingTime}</div>
+                        <div><strong>Space Saved:</strong> ${spaceSaved}</div>
+                        <div><strong>Compression:</strong> ${compressionRatio}</div>
+                        <div><strong>Completed:</strong> ${new Date(job.completed_at).toLocaleString()}</div>
+                        <div style="margin-top: 5px; font-size: 0.9em; color: #666;">
+                            Input: ${job.input_path}<br>
+                            Output: ${job.output_path}
+                        </div>
+                        <button class="reprocess-btn" onclick="reprocessJob(${job.id})">Reprocess</button>
+                    </div>
+                `;
+            });
+            
+            jobsDiv.innerHTML = jobsHTML;
+        }
+        
+        async function loadFailedJobs() {
+            const jobs = await fetchAPI('/api/jobs/failed');
+            const jobsDiv = document.getElementById('failed-jobs');
+            
+            if (!jobs) {
+                jobsDiv.innerHTML = '<span class="error-message">Failed to load failed jobs</span>';
+                return;
+            }
+            
+            if (jobs.length === 0) {
+                jobsDiv.innerHTML = '<p>No failed jobs</p>';
+                return;
+            }
+            
+            let jobsHTML = '';
+            jobs.forEach(job => {
+                const fileName = job.input_path.split('/').pop();
+                jobsHTML += `
+                    <div class="job-item">
+                        <h4>${fileName}</h4>
+                        <div><strong>Profile:</strong> ${job.profile_name}</div>
+                        <div><strong>Status:</strong> ${job.status}</div>
+                        <div><strong>Error:</strong> <span style="color: #dc3545;">${job.error_message || 'Unknown error'}</span></div>
+                        <div><strong>Created:</strong> ${new Date(job.created_at).toLocaleString()}</div>
+                        <div style="margin-top: 5px; font-size: 0.9em; color: #666;">
+                            Input: ${job.input_path}<br>
+                            Output: ${job.output_path}
+                        </div>
+                        <button class="reprocess-btn" onclick="reprocessJob(${job.id})">Reprocess</button>
+                    </div>
+                `;
+            });
+            
+            jobsDiv.innerHTML = jobsHTML;
+        }
+        
+        async function reprocessJob(jobId) {
+            try {
+                const button = event.target;
+                button.disabled = true;
+                button.textContent = 'Processing...';
+                
+                const response = await fetch(`/api/jobs/${jobId}/reprocess`, {
+                    method: 'POST'
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const result = await response.json();
+                alert(`Job reprocessed successfully! New job ID: ${result.new_job.id}`);
+                
+                // Refresh the current tab
+                const activeTab = document.querySelector('.tab.active').textContent.toLowerCase().replace(' jobs', '');
+                showJobTab(activeTab);
+                
+            } catch (error) {
+                console.error('Error reprocessing job:', error);
+                alert('Failed to reprocess job: ' + error.message);
+                button.disabled = false;
+                button.textContent = 'Reprocess';
+            }
+        }
+        
         async function loadDashboardData() {
             await Promise.all([
                 loadServiceStatus(),
@@ -337,6 +592,9 @@
         document.addEventListener('DOMContentLoaded', function() {
             loadDashboardData();
             startAutoRefresh();
+            
+            // Initialize the first job management tab
+            showJobTab('pending');
         });
         
         // Stop auto-refresh when page is hidden
