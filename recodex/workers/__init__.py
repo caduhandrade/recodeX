@@ -10,6 +10,7 @@ from ..config import RecodeXConfig, TranscodeProfile
 from ..core import TranscodeEngine, TranscodeJob
 from ..database import DatabaseManager, TranscodeRecord
 from ..monitoring import FileMonitor
+from ..web import run_web_server
 
 logger = logging.getLogger(__name__)
 
@@ -249,6 +250,7 @@ class RecodeXService:
         self.db_manager = DatabaseManager(config.database.url)
         self.file_monitor: Optional[FileMonitor] = None
         self.worker_manager: Optional[WorkerManager] = None
+        self.web_server_task: Optional[asyncio.Task] = None
         self.running = False
     
     async def start(self):
@@ -269,6 +271,9 @@ class RecodeXService:
         self.worker_manager = WorkerManager(self.config, self.db_manager)
         await self.worker_manager.start(self.file_monitor)
         
+        # Start web server
+        self.web_server_task = asyncio.create_task(run_web_server(self.config, self))
+        
         self.running = True
         logger.info("RecodeX service started")
     
@@ -278,6 +283,14 @@ class RecodeXService:
             return
         
         logger.info("Stopping RecodeX service...")
+        
+        # Stop web server
+        if self.web_server_task:
+            self.web_server_task.cancel()
+            try:
+                await self.web_server_task
+            except asyncio.CancelledError:
+                pass
         
         # Stop worker manager
         if self.worker_manager:
