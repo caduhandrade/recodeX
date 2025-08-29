@@ -398,10 +398,25 @@ class TranscodeEngine:
     
     async def _run_ffmpeg(self, output_stream, job: TranscodeJob) -> subprocess.CompletedProcess:
         """Run ffmpeg process with progress tracking."""
-        # Get ffmpeg command
+        import re
+        
+        # Get ffmpeg command and add progress option
         cmd = ffmpeg.compile(output_stream)
+        # Add progress reporting to stderr
+        cmd = cmd + ['-progress', 'pipe:2']
         
         logger.debug(f"FFmpeg command: {' '.join(cmd)}")
+        
+        # Get duration from input file for progress calculation
+        duration = None
+        try:
+            probe = ffmpeg.probe(str(job.input_path))
+            format_info = probe.get('format', {})
+            duration_str = format_info.get('duration')
+            if duration_str:
+                duration = float(duration_str)
+        except Exception as e:
+            logger.warning(f"Could not get duration for progress tracking: {e}")
         
         # Run process
         process = await asyncio.create_subprocess_exec(
@@ -410,14 +425,63 @@ class TranscodeEngine:
             stderr=asyncio.subprocess.PIPE
         )
         
-        stdout, stderr = await process.communicate()
+        # Read stderr line by line for progress tracking
+        stderr_lines = []
+        stdout_data = b''
+        
+        # Read stdout (shouldn't have much)
+        async def read_stdout():
+            nonlocal stdout_data
+            if process.stdout:
+                stdout_data = await process.stdout.read()
+        
+        # Read stderr for progress
+        async def read_stderr():
+            if not process.stderr:
+                return
+            
+            while True:
+                line = await process.stderr.readline()
+                if not line:
+                    break
+                
+                line_str = line.decode('utf-8', errors='replace').strip()
+                stderr_lines.append(line_str)
+                
+                # Parse progress information
+                if duration and 'time=' in line_str:
+                    # Look for time=HH:MM:SS.mmm format
+                    time_match = re.search(r'time=(\d+):(\d+):(\d+\.\d+)', line_str)
+                    if time_match:
+                        hours = int(time_match.group(1))
+                        minutes = int(time_match.group(2))
+                        seconds = float(time_match.group(3))
+                        current_time = hours * 3600 + minutes * 60 + seconds
+                        
+                        # Calculate progress percentage
+                        progress = min(100.0, (current_time / duration) * 100)
+                        job.progress = progress
+                        
+                        logger.debug(f"FFmpeg progress: {progress:.1f}% ({current_time:.1f}s / {duration:.1f}s)")
+        
+        # Start reading both streams
+        await asyncio.gather(read_stdout(), read_stderr())
+        
+        # Wait for process to complete
+        returncode = await process.wait()
+        
+        # Join stderr lines
+        stderr_data = '\n'.join(stderr_lines).encode('utf-8')
         
         # Create a completed process object
         completed_process = subprocess.CompletedProcess(
-            cmd, process.returncode, stdout, stderr
+            cmd, returncode, stdout_data, stderr_data
         )
         
         if completed_process.returncode != 0:
-            logger.error(f"FFmpeg stderr: {stderr.decode()}")
+            logger.error(f"FFmpeg stderr: {stderr_data.decode()}")
+        else:
+            # Set progress to 100% on successful completion
+            job.progress = 100.0
         
         return completed_process

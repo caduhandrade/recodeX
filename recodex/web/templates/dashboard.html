@@ -1,36 +1,352 @@
 <!DOCTYPE html>
-<html><head><title>{{ title }}</title></head>
+<html>
+<head>
+    <title>{{ title }}</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            margin-bottom: 30px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 2.5rem;
+            margin: 0 0 10px 0;
+        }
+        .nav-buttons {
+            margin-top: 20px;
+        }
+        .nav-buttons a {
+            background-color: #007bff;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            text-decoration: none;
+            margin-right: 10px;
+        }
+        .nav-buttons a.config {
+            background-color: #28a745;
+        }
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 20px;
+        }
+        .card h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-running {
+            background-color: #28a745;
+        }
+        .status-stopped {
+            background-color: #dc3545;
+        }
+        .worker-item {
+            padding: 10px;
+            margin: 5px 0;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            border-left: 4px solid #667eea;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 5px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background-color: #28a745;
+            transition: width 0.3s ease;
+        }
+        .job-item {
+            padding: 15px;
+            margin: 10px 0;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            border-left: 4px solid #17a2b8;
+        }
+        .job-item h4 {
+            margin-top: 0;
+            color: #17a2b8;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .stat-item {
+            text-align: center;
+            padding: 10px;
+            background-color: #e9ecef;
+            border-radius: 4px;
+        }
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .error-message {
+            color: #dc3545;
+            font-style: italic;
+        }
+        .loading {
+            color: #6c757d;
+            font-style: italic;
+        }
+    </style>
+</head>
 <body>
-    <div style="max-width: 1200px; margin: 0 auto; padding: 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; margin-bottom: 30px; border-radius: 8px; text-align: center;">
-            <h1 style="font-size: 2.5rem; margin-bottom: 10px; margin-top: 0;">RecodeX Dashboard</h1>
-            <p style="margin-bottom: 20px;">Media Transcoding Service</p>
-            <a href="/" style="background-color: #007bff; color: white; padding: 8px 16px; border-radius: 4px; text-decoration: none; margin-right: 10px;">Dashboard</a>
-            <a href="/config" style="background-color: #28a745; color: white; padding: 8px 16px; border-radius: 4px; text-decoration: none;">Configuration</a>
+    <div class="container">
+        <div class="header">
+            <h1>RecodeX Dashboard</h1>
+            <p>Media Transcoding Service</p>
+            <div class="nav-buttons">
+                <a href="/">Dashboard</a>
+                <a href="/config" class="config">Configuration</a>
+            </div>
         </div>
         
-        <div style="background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); padding: 30px;">
-            <h2 style="color: #667eea; margin-bottom: 20px;">Welcome to RecodeX</h2>
-            <p style="margin-bottom: 15px;">RecodeX is a modern media transcoding service that automatically processes video files from configured watch folders.</p>
+        <div class="dashboard-grid">
+            <!-- Service Status Card -->
+            <div class="card">
+                <h3>Service Status</h3>
+                <div id="service-status">
+                    <span class="loading">Loading...</span>
+                </div>
+            </div>
             
-            <h3 style="color: #333; margin-bottom: 15px;">Getting Started</h3>
-            <ol style="margin-bottom: 20px; padding-left: 20px;">
-                <li style="margin-bottom: 10px;">Click the <strong>Configuration</strong> button above to access the settings panel</li>
-                <li style="margin-bottom: 10px;">Add transcoding profiles to define how your videos should be processed</li>
-                <li style="margin-bottom: 10px;">Configure watch folders to monitor directories for new video files</li>
-                <li style="margin-bottom: 10px;">Start the full service with <code>recodex start</code> to begin automatic transcoding</li>
-            </ol>
-            
-            <div style="background: #f8f9fa; padding: 20px; border-radius: 6px; border-left: 4px solid #667eea;">
-                <h4 style="margin-top: 0; color: #667eea;">Quick Setup</h4>
-                <p style="margin-bottom: 10px;">Use the configuration interface to:</p>
-                <ul style="margin-bottom: 0; padding-left: 20px;">
-                    <li>Create custom transcoding profiles</li>
-                    <li>Add folders to monitor for video files</li>
-                    <li>Adjust settings like file extensions, output paths, and more</li>
-                </ul>
+            <!-- Workers Status Card -->
+            <div class="card">
+                <h3>Workers Status</h3>
+                <div id="workers-status">
+                    <span class="loading">Loading...</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Active Jobs Card -->
+        <div class="card">
+            <h3>Active Jobs</h3>
+            <div id="active-jobs">
+                <span class="loading">Loading...</span>
             </div>
         </div>
     </div>
+
+    <script>
+        let refreshInterval;
+        
+        // Auto-refresh every 2 seconds
+        function startAutoRefresh() {
+            refreshInterval = setInterval(loadDashboardData, 2000);
+        }
+        
+        function stopAutoRefresh() {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+            }
+        }
+        
+        async function fetchAPI(endpoint) {
+            try {
+                const response = await fetch(endpoint);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                return await response.json();
+            } catch (error) {
+                console.error(`Error fetching ${endpoint}:`, error);
+                return null;
+            }
+        }
+        
+        async function loadServiceStatus() {
+            const status = await fetchAPI('/api/status');
+            const statusDiv = document.getElementById('service-status');
+            
+            if (!status) {
+                statusDiv.innerHTML = '<span class="error-message">Failed to load status</span>';
+                return;
+            }
+            
+            const serviceRunning = status.service_running;
+            const workersRunning = status.workers?.running || false;
+            const ffmpegRunning = status.ffmpeg_running || false;
+            const workerCount = status.workers?.worker_count || 0;
+            const activeJobs = status.active_jobs_count || 0;
+            const queueSize = status.file_monitor?.queue_size || 0;
+            
+            statusDiv.innerHTML = `
+                <div style="margin-bottom: 10px;">
+                    <span class="status-indicator ${serviceRunning ? 'status-running' : 'status-stopped'}"></span>
+                    Service: ${serviceRunning ? 'Running' : 'Stopped'}
+                </div>
+                <div style="margin-bottom: 10px;">
+                    <span class="status-indicator ${workersRunning ? 'status-running' : 'status-stopped'}"></span>
+                    Workers: ${workersRunning ? 'Running' : 'Stopped'}
+                </div>
+                <div style="margin-bottom: 10px;">
+                    <span class="status-indicator ${ffmpegRunning ? 'status-running' : 'status-stopped'}"></span>
+                    FFmpeg: ${ffmpegRunning ? 'Processing' : 'Idle'}
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-value">${workerCount}</div>
+                        <div>Workers</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">${activeJobs}</div>
+                        <div>Active Jobs</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">${queueSize}</div>
+                        <div>Queue</div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        async function loadWorkersStatus() {
+            const status = await fetchAPI('/api/status');
+            const workersDiv = document.getElementById('workers-status');
+            
+            if (!status || !status.workers || !status.workers.workers) {
+                workersDiv.innerHTML = '<span class="error-message">No worker data available</span>';
+                return;
+            }
+            
+            const workers = status.workers.workers;
+            
+            if (workers.length === 0) {
+                workersDiv.innerHTML = '<p>No workers configured</p>';
+                return;
+            }
+            
+            let workersHTML = '';
+            workers.forEach(worker => {
+                const isRunning = worker.running;
+                const hasJob = worker.current_job && worker.current_job.status !== 'idle';
+                const progress = worker.current_job?.progress || 0;
+                
+                workersHTML += `
+                    <div class="worker-item">
+                        <div>
+                            <span class="status-indicator ${isRunning ? 'status-running' : 'status-stopped'}"></span>
+                            Worker ${worker.worker_id}: ${isRunning ? 'Running' : 'Stopped'}
+                        </div>
+                        ${hasJob ? `
+                            <div style="margin-top: 5px;">
+                                Status: ${worker.current_job.status}
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: ${progress}%"></div>
+                                </div>
+                                <small>${progress.toFixed(1)}% complete</small>
+                            </div>
+                        ` : '<div>Idle</div>'}
+                    </div>
+                `;
+            });
+            
+            workersDiv.innerHTML = workersHTML;
+        }
+        
+        async function loadActiveJobs() {
+            const jobs = await fetchAPI('/api/jobs/active');
+            const jobsDiv = document.getElementById('active-jobs');
+            
+            if (!jobs) {
+                jobsDiv.innerHTML = '<span class="error-message">Failed to load jobs</span>';
+                return;
+            }
+            
+            if (jobs.length === 0) {
+                jobsDiv.innerHTML = '<p>No active jobs</p>';
+                return;
+            }
+            
+            let jobsHTML = '';
+            jobs.forEach(job => {
+                const fileName = job.input_path.split('/').pop();
+                const progress = job.progress || 0;
+                
+                jobsHTML += `
+                    <div class="job-item">
+                        <h4>${fileName}</h4>
+                        <div><strong>Profile:</strong> ${job.profile}</div>
+                        <div><strong>Status:</strong> ${job.status}</div>
+                        <div><strong>Worker:</strong> ${job.worker_id}</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${progress}%"></div>
+                        </div>
+                        <div style="margin-top: 5px;">
+                            <small>Progress: ${progress.toFixed(1)}%</small>
+                        </div>
+                        <div style="margin-top: 5px; font-size: 0.9em; color: #666;">
+                            Input: ${job.input_path}<br>
+                            Output: ${job.output_path}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            jobsDiv.innerHTML = jobsHTML;
+        }
+        
+        async function loadDashboardData() {
+            await Promise.all([
+                loadServiceStatus(),
+                loadWorkersStatus(),
+                loadActiveJobs()
+            ]);
+        }
+        
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            loadDashboardData();
+            startAutoRefresh();
+        });
+        
+        // Stop auto-refresh when page is hidden
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                stopAutoRefresh();
+            } else {
+                startAutoRefresh();
+            }
+        });
+    </script>
 </body>
 </html>
