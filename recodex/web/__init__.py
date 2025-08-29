@@ -270,18 +270,21 @@ def create_templates_directory():
     templates_dir = Path(__file__).parent / "templates"
     templates_dir.mkdir(exist_ok=True)
     
-    # Read enhanced dashboard template
-    enhanced_template_path = Path("/tmp/enhanced_dashboard.html")
-    if enhanced_template_path.exists():
-        dashboard_html = enhanced_template_path.read_text()
-    else:
-        # Fallback to basic template if enhanced one doesn't exist
-        dashboard_html = '''<!DOCTYPE html>
+    # Only create dashboard.html if it doesn't already exist
+    dashboard_file = templates_dir / "dashboard.html"
+    if not dashboard_file.exists():
+        # Read enhanced dashboard template
+        enhanced_template_path = Path("/tmp/enhanced_dashboard.html")
+        if enhanced_template_path.exists():
+            dashboard_html = enhanced_template_path.read_text()
+        else:
+            # Fallback to basic template if enhanced one doesn't exist
+            dashboard_html = '''<!DOCTYPE html>
 <html><head><title>{{ title }}</title></head>
 <body><h1>RecodeX Dashboard</h1><p>Enhanced configuration interface will be available soon.</p></body>
 </html>'''
-    
-    (templates_dir / "dashboard.html").write_text(dashboard_html)
+        
+        dashboard_file.write_text(dashboard_html)
 
 
 async def run_web_server(config: RecodeXConfig, service: "RecodeXService"):
