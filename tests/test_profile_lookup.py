@@ -19,11 +19,12 @@ def test_profile_lookup_by_name():
         profile="Small File"  # This is the profile NAME, not the key
     )
     
-    # Create a mock job queue
+    # Create a mock job queue and event loop
     job_queue = asyncio.Queue()
+    event_loop = asyncio.new_event_loop()
     
     # Create MediaFileHandler instance
-    handler = MediaFileHandler(watch_folder, job_queue, config.profiles)
+    handler = MediaFileHandler(watch_folder, job_queue, config.profiles, event_loop)
     
     # Test profile lookup by name
     profile = handler._find_profile("Small File")
@@ -44,11 +45,12 @@ def test_profile_lookup_by_key():
         profile="balanced"  # This is the profile KEY
     )
     
-    # Create a mock job queue
+    # Create a mock job queue and event loop
     job_queue = asyncio.Queue()
+    event_loop = asyncio.new_event_loop()
     
     # Create MediaFileHandler instance
-    handler = MediaFileHandler(watch_folder, job_queue, config.profiles)
+    handler = MediaFileHandler(watch_folder, job_queue, config.profiles, event_loop)
     
     # Test profile lookup by key
     profile = handler._find_profile("balanced")
@@ -69,11 +71,12 @@ def test_profile_lookup_nonexistent():
         profile="Non Existent Profile"
     )
     
-    # Create a mock job queue
+    # Create a mock job queue and event loop
     job_queue = asyncio.Queue()
+    event_loop = asyncio.new_event_loop()
     
     # Create MediaFileHandler instance
-    handler = MediaFileHandler(watch_folder, job_queue, config.profiles)
+    handler = MediaFileHandler(watch_folder, job_queue, config.profiles, event_loop)
     
     # Test profile lookup for non-existent profile
     profile = handler._find_profile("Non Existent Profile")
@@ -91,11 +94,12 @@ def test_profile_lookup_case_sensitivity():
         profile="balanced"
     )
     
-    # Create a mock job queue
+    # Create a mock job queue and event loop
     job_queue = asyncio.Queue()
+    event_loop = asyncio.new_event_loop()
     
     # Create MediaFileHandler instance
-    handler = MediaFileHandler(watch_folder, job_queue, config.profiles)
+    handler = MediaFileHandler(watch_folder, job_queue, config.profiles, event_loop)
     
     # Test exact match
     profile = handler._find_profile("balanced")

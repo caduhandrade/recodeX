@@ -16,11 +16,12 @@ logger = logging.getLogger(__name__)
 class MediaFileHandler(FileSystemEventHandler):
     """File system event handler for media files."""
     
-    def __init__(self, watch_folder: WatchFolder, job_queue: asyncio.Queue, profiles: Dict[str, TranscodeProfile]):
+    def __init__(self, watch_folder: WatchFolder, job_queue: asyncio.Queue, profiles: Dict[str, TranscodeProfile], event_loop: asyncio.AbstractEventLoop):
         super().__init__()
         self.watch_folder = watch_folder
         self.job_queue = job_queue
         self.profiles = profiles
+        self.event_loop = event_loop
         self.processed_files: Set[Path] = set()
         self.processing_files: Set[Path] = set()
     
@@ -28,13 +29,15 @@ class MediaFileHandler(FileSystemEventHandler):
         """Handle file creation events."""
         if not event.is_directory:
             file_path = Path(event.src_path)
-            asyncio.create_task(self._process_new_file(file_path))
+            # Schedule coroutine on the main event loop from watchdog thread
+            asyncio.run_coroutine_threadsafe(self._process_new_file(file_path), self.event_loop)
     
     def on_moved(self, event):
         """Handle file move events."""
         if not event.is_directory:
             file_path = Path(event.dest_path)
-            asyncio.create_task(self._process_new_file(file_path))
+            # Schedule coroutine on the main event loop from watchdog thread
+            asyncio.run_coroutine_threadsafe(self._process_new_file(file_path), self.event_loop)
     
     def _find_profile(self, profile_identifier: str) -> Optional[TranscodeProfile]:
         """Find profile by key or name.
@@ -205,13 +208,16 @@ class FileMonitor:
         
         logger.info("Starting file monitoring...")
         
+        # Get the current event loop
+        event_loop = asyncio.get_running_loop()
+        
         for watch_folder in self.watch_folders:
             if not watch_folder.path.exists():
                 logger.warning(f"Watch folder does not exist: {watch_folder.path}")
                 continue
             
-            # Create handler for this watch folder
-            handler = MediaFileHandler(watch_folder, self.job_queue, self.profiles)
+            # Create handler for this watch folder with event loop reference
+            handler = MediaFileHandler(watch_folder, self.job_queue, self.profiles, event_loop)
             self.handlers.append(handler)
             
             # Create observer
