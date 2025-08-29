@@ -245,8 +245,9 @@ class WorkerManager:
 class RecodeXService:
     """Main service coordinator for RecodeX."""
     
-    def __init__(self, config: RecodeXConfig):
+    def __init__(self, config: RecodeXConfig, config_path: Optional[Path] = None):
         self.config = config
+        self.config_path = config_path
         self.db_manager = DatabaseManager(config.database.url)
         self.file_monitor: Optional[FileMonitor] = None
         self.worker_manager: Optional[WorkerManager] = None

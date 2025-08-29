@@ -84,7 +84,8 @@ def start(ctx):
         sys.exit(1)
     
     # Create and start service
-    service = RecodeXService(config)
+    config_path = ctx.obj['config_path']
+    service = RecodeXService(config, config_path)
     
     async def run_service():
         try:
