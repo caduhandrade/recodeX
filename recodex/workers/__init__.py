@@ -65,25 +65,34 @@ class TranscodeWorker:
         
         logger.info(f"Worker {self.worker_id} processing: {input_path}")
         
-        # Create database record
-        record = TranscodeRecord(
-            input_path=str(input_path),
-            output_path=str(output_path),
-            profile_name=profile.name,
-            status="pending",
-            created_at=datetime.utcnow()
-        )
+        # Check if this is a database job (reprocessing) or a new job
+        db_record_id = job_data.get("db_record_id")
         
-        # Add to database
-        await self.db_manager.add_record(record)
+        if db_record_id:
+            # This is a reprocessing job, use existing database record
+            record_id = db_record_id
+            logger.info(f"Processing reprocessing job with database record ID: {record_id}")
+        else:
+            # Create new database record for new files
+            record = TranscodeRecord(
+                input_path=str(input_path),
+                output_path=str(output_path),
+                profile_name=profile.name,
+                status="pending",
+                created_at=datetime.utcnow()
+            )
+            
+            # Add to database
+            await self.db_manager.add_record(record)
+            record_id = record.id
         
         try:
             # Create transcoding job
             self.current_job = TranscodeJob(input_path, output_path, profile)
             
-            # Update record status
+            # Update record status to running
             await self.db_manager.update_record(
-                record.id,
+                record_id,
                 status="running",
                 started_at=datetime.utcnow()
             )
@@ -100,7 +109,7 @@ class TranscodeWorker:
             # Update database record
             if success:
                 await self.db_manager.update_record(
-                    record.id,
+                    record_id,
                     status="completed",
                     completed_at=datetime.utcnow(),
                     original_size=self.current_job.original_size,
@@ -109,14 +118,15 @@ class TranscodeWorker:
                     hardware_accel_used=profile.hardware_accel
                 )
                 
-                # Mark as processed in file monitor
-                file_monitor.mark_job_processed(job_data)
+                # Mark as processed in file monitor (only for new files, not reprocessing)
+                if not db_record_id:
+                    file_monitor.mark_job_processed(job_data)
                 
                 logger.info(f"Worker {self.worker_id} completed: {input_path}")
                 
             else:
                 await self.db_manager.update_record(
-                    record.id,
+                    record_id,
                     status="failed",
                     completed_at=datetime.utcnow(),
                     error_message=self.current_job.error_message,
@@ -130,7 +140,7 @@ class TranscodeWorker:
             
             # Update record as failed
             await self.db_manager.update_record(
-                record.id,
+                record_id,
                 status="failed",
                 completed_at=datetime.utcnow(),
                 error_message=str(e)
@@ -265,7 +275,7 @@ class RecodeXService:
         await self.db_manager.initialize()
         
         # Create file monitor
-        self.file_monitor = FileMonitor(self.config.watch_folders, self.config.profiles)
+        self.file_monitor = FileMonitor(self.config.watch_folders, self.config.profiles, self.db_manager)
         await self.file_monitor.start()
         
         # Create and start worker manager

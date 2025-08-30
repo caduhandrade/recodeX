@@ -205,9 +205,10 @@ class MediaFileHandler(FileSystemEventHandler):
 class FileMonitor:
     """Main file monitoring coordinator."""
     
-    def __init__(self, watch_folders: List[WatchFolder], profiles: Dict[str, TranscodeProfile]):
+    def __init__(self, watch_folders: List[WatchFolder], profiles: Dict[str, TranscodeProfile], db_manager=None):
         self.watch_folders = watch_folders
         self.profiles = profiles
+        self.db_manager = db_manager
         self.job_queue: asyncio.Queue = asyncio.Queue()
         self.observers: List[Observer] = []
         self.handlers: List[MediaFileHandler] = []
@@ -299,10 +300,51 @@ class FileMonitor:
         logger.info("Existing file scan completed")
     
     async def get_job(self) -> Optional[dict]:
-        """Get next job from queue."""
+        """Get next job from queue or database."""
         try:
+            # First, try to get a job from the queue
             return await asyncio.wait_for(self.job_queue.get(), timeout=1.0)
         except asyncio.TimeoutError:
+            # If no job in queue, check database for pending jobs
+            if self.db_manager:
+                return await self._get_pending_job_from_db()
+            return None
+    
+    async def _get_pending_job_from_db(self) -> Optional[dict]:
+        """Get a pending job from database and convert to job format."""
+        try:
+            pending_jobs = await self.db_manager.get_pending_jobs(limit=1)
+            if not pending_jobs:
+                return None
+            
+            record = pending_jobs[0]
+            
+            # Convert database record to job format
+            input_path = Path(record.input_path)
+            output_path = Path(record.output_path)
+            
+            # Find matching profile
+            profile = self.profiles.get(record.profile_name)
+            if not profile:
+                logger.error(f"Profile '{record.profile_name}' not found for job {record.id}")
+                return None
+            
+            # Mark the job as running in the database
+            await self.db_manager.update_record(record.id, status="running")
+            
+            job = {
+                "input_path": input_path,
+                "output_path": output_path,
+                "profile": profile,
+                "watch_folder": None,  # Database jobs don't have associated watch folders
+                "db_record_id": record.id  # Include the database record ID for tracking
+            }
+            
+            logger.info(f"Retrieved pending job from database: {input_path} -> {output_path}")
+            return job
+            
+        except Exception as e:
+            logger.error(f"Error retrieving pending job from database: {e}")
             return None
     
     def mark_job_processed(self, job: dict):
